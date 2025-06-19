@@ -1,14 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Forest Fire Detection</title>
+  <title>Forest Fire Detection Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; background: #f3f3f3; }
-    .alert-box { font-size: 24px; font-weight: bold; padding: 10px; margin-bottom: 20px; border-radius: 5px; }
-    .green { background-color: #c8e6c9; color: #256029; }
-    .red { background-color: #ffcdd2; color: #b71c1c; }
-    canvas { max-width: 700px; margin: 20px 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f7f9;
+      padding: 20px;
+    }
+    h2 {
+      color: #333;
+    }
+    .alert-box {
+      font-size: 22px;
+      font-weight: bold;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      width: fit-content;
+    }
+    .green {
+      background-color: #c8e6c9;
+      color: #1b5e20;
+    }
+    .red {
+      background-color: #ffcdd2;
+      color: #b71c1c;
+    }
+    canvas {
+      max-width: 700px;
+      margin-top: 30px;
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -20,30 +47,41 @@
   <canvas id="co2Chart"></canvas>
 
   <script>
-    const SHEET_URL = "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbyNdTK-y4D7NQeCoGz_Id1rB49foyIvsVumP2mb5uPeO0MUeB8YLECWvsXyUAf3VGYm/exec/exec"; // Replace this
+    const SHEET_URL = "https://script.google.com/macros/s/AKfycbyNdTK-y4D7NQeCoGz_Id1rB49foyIvsVumP2mb5uPeO0MUeB8YLECWvsXyUAf3VGYm/exec";
 
     async function fetchData() {
-      const res = await fetch(SHEET_URL);
-      const data = await res.json();
+      try {
+        const res = await fetch(SHEET_URL);
+        const data = await res.json();
 
-      const timestamps = [];
-      const methane = [];
-      const co2 = [];
-      let latestAlert = "NO";
+        const timestamps = [];
+        const methane = [];
+        const co2 = [];
+        let latestAlert = "NO";
 
-      for (let i = 1; i < data.length; i++) {
-        timestamps.push(new Date(data[i][0]).toLocaleTimeString());
-        methane.push(data[i][1]);
-        co2.push(data[i][2]);
-        latestAlert = data[i][3];
+        for (let i = 1; i < data.length; i++) {
+          timestamps.push(new Date(data[i][0]).toLocaleTimeString());
+          methane.push(Number(data[i][1]));
+          co2.push(Number(data[i][2]));
+          latestAlert = data[i][3];
+        }
+
+        updateCharts(timestamps, methane, co2);
+        updateAlertBox(latestAlert);
+      } catch (err) {
+        document.getElementById('alertBox').innerText = "Error fetching data!";
+        document.getElementById('alertBox').className = "alert-box red";
+        console.error("Fetch Error:", err);
       }
-
-      updateCharts(timestamps, methane, co2);
-      updateAlertBox(latestAlert);
     }
 
+    let methaneChartInstance, co2ChartInstance;
+
     function updateCharts(labels, methaneData, co2Data) {
-      new Chart(document.getElementById('methaneChart'), {
+      if (methaneChartInstance) methaneChartInstance.destroy();
+      if (co2ChartInstance) co2ChartInstance.destroy();
+
+      methaneChartInstance = new Chart(document.getElementById('methaneChart'), {
         type: 'line',
         data: {
           labels,
@@ -51,12 +89,23 @@
             label: 'Methane (MQ-4)',
             data: methaneData,
             borderColor: 'orange',
-            fill: false
+            backgroundColor: 'rgba(255,165,0,0.2)',
+            fill: true,
+            tension: 0.4
           }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
         }
       });
 
-      new Chart(document.getElementById('co2Chart'), {
+      co2ChartInstance = new Chart(document.getElementById('co2Chart'), {
         type: 'line',
         data: {
           labels,
@@ -64,20 +113,36 @@
             label: 'CO2 (MQ-135)',
             data: co2Data,
             borderColor: 'blue',
-            fill: false
+            backgroundColor: 'rgba(0,0,255,0.1)',
+            fill: true,
+            tension: 0.4
           }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
         }
       });
     }
 
     function updateAlertBox(alert) {
-      const box = document.getElementById('alertBox');
-      box.textContent = alert === "YES" ? "🔥 Fire Alert Detected!" : "✅ Status: Safe";
-      box.className = alert === "YES" ? "alert-box red" : "alert-box green";
+      const box = document.getElementById("alertBox");
+      if (alert === "YES") {
+        box.textContent = "🔥 Fire Alert Detected!";
+        box.className = "alert-box red";
+      } else {
+        box.textContent = "✅ Status: Safe";
+        box.className = "alert-box green";
+      }
     }
 
     fetchData();
-    setInterval(fetchData, 10000); // update every 10 seconds
+    setInterval(fetchData, 10000); // Update every 10 seconds
   </script>
 </body>
 </html>
