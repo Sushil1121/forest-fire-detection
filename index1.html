@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forest Fire Detection</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f3f3f3; }
+    .alert-box { font-size: 24px; font-weight: bold; padding: 10px; margin-bottom: 20px; border-radius: 5px; }
+    .green { background-color: #c8e6c9; color: #256029; }
+    .red { background-color: #ffcdd2; color: #b71c1c; }
+    canvas { max-width: 700px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>🌲 Forest Fire Detection Dashboard</h2>
+  <div id="alertBox" class="alert-box green">Status: Safe</div>
+
+  <canvas id="methaneChart"></canvas>
+  <canvas id="co2Chart"></canvas>
+
+  <script>
+    const SHEET_URL = "https://script.google.com/macros/s/https://script.google.com/macros/s/AKfycbyNdTK-y4D7NQeCoGz_Id1rB49foyIvsVumP2mb5uPeO0MUeB8YLECWvsXyUAf3VGYm/exec/exec"; // Replace this
+
+    async function fetchData() {
+      const res = await fetch(SHEET_URL);
+      const data = await res.json();
+
+      const timestamps = [];
+      const methane = [];
+      const co2 = [];
+      let latestAlert = "NO";
+
+      for (let i = 1; i < data.length; i++) {
+        timestamps.push(new Date(data[i][0]).toLocaleTimeString());
+        methane.push(data[i][1]);
+        co2.push(data[i][2]);
+        latestAlert = data[i][3];
+      }
+
+      updateCharts(timestamps, methane, co2);
+      updateAlertBox(latestAlert);
+    }
+
+    function updateCharts(labels, methaneData, co2Data) {
+      new Chart(document.getElementById('methaneChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Methane (MQ-4)',
+            data: methaneData,
+            borderColor: 'orange',
+            fill: false
+          }]
+        }
+      });
+
+      new Chart(document.getElementById('co2Chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'CO2 (MQ-135)',
+            data: co2Data,
+            borderColor: 'blue',
+            fill: false
+          }]
+        }
+      });
+    }
+
+    function updateAlertBox(alert) {
+      const box = document.getElementById('alertBox');
+      box.textContent = alert === "YES" ? "🔥 Fire Alert Detected!" : "✅ Status: Safe";
+      box.className = alert === "YES" ? "alert-box red" : "alert-box green";
+    }
+
+    fetchData();
+    setInterval(fetchData, 10000); // update every 10 seconds
+  </script>
+</body>
+</html>
